@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   formatDurationShort,
   workedMs,
 } from "@/lib/format-time";
 import type { TimeLog } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { NameSuggestionField } from "./name-suggestion-field";
 
 type TimeLogEditModalProps = {
   log: TimeLog | null;
@@ -39,6 +39,7 @@ export function TimeLogEditModal({
   onClose,
 }: TimeLogEditModalProps) {
   const titleId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState("");
   const [startLocal, setStartLocal] = useState("");
   const [endLocal, setEndLocal] = useState("");
@@ -77,14 +78,11 @@ export function TimeLogEditModal({
     }
   })();
 
-  const filtered = suggestions.filter((name) =>
-    name.toLowerCase().includes(description.trim().toLowerCase()),
-  );
-
   function submit() {
     const trimmed = description.trim();
     if (!trimmed) {
       setError("A name is required.");
+      inputRef.current?.focus();
       return;
     }
     if (!startLocal || !endLocal) {
@@ -93,7 +91,10 @@ export function TimeLogEditModal({
     }
     const startIso = fromLocalInputValue(startLocal);
     const endIso = fromLocalInputValue(endLocal);
-    if (Number.isNaN(new Date(startIso).getTime()) || Number.isNaN(new Date(endIso).getTime())) {
+    if (
+      Number.isNaN(new Date(startIso).getTime()) ||
+      Number.isNaN(new Date(endIso).getTime())
+    ) {
       setError("Invalid date or time.");
       return;
     }
@@ -136,55 +137,24 @@ export function TimeLogEditModal({
         </p>
 
         <div className="mt-5 space-y-4">
-          <div className="relative">
+          <div>
             <label className="mb-1.5 block text-sm font-medium text-neutral-700">
               Name
             </label>
-            <input
+            <NameSuggestionField
               value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
+              onChange={(next) => {
+                setDescription(next);
                 setError(null);
-                setListOpen(true);
               }}
-              onBlur={() => {
-                window.setTimeout(() => setListOpen(false), 150);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              placeholder="e.g. Editing Stuff"
-              className={cn(
-                "h-11 w-full rounded-xl border bg-white px-3 text-sm text-neutral-900 outline-none transition",
-                error && !description.trim()
-                  ? "border-red-400 focus:border-red-500"
-                  : "border-neutral-300 focus:border-[#e812a4]",
-              )}
-              autoComplete="off"
+              suggestions={suggestions}
+              listOpen={listOpen}
+              onListOpenChange={setListOpen}
+              error={Boolean(error && !description.trim())}
+              inputRef={inputRef}
+              onSubmit={submit}
+              onCancel={onClose}
             />
-            {listOpen && filtered.length > 0 ? (
-              <ul className="absolute z-10 mt-2 max-h-40 w-full overflow-auto rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
-                {filtered.map((name) => (
-                  <li key={name}>
-                    <button
-                      type="button"
-                      className="w-full px-3 py-2 text-left text-sm text-neutral-800 transition hover:bg-neutral-50 hover:text-[#e812a4]"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setDescription(name);
-                        setListOpen(false);
-                        setError(null);
-                      }}
-                    >
-                      {name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

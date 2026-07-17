@@ -54,7 +54,8 @@ export function downloadReportPdf(input: ReportPdfInput) {
   const marginX = 48;
   let y = 52;
 
-  const pink: [number, number, number] = [232, 18, 164];
+  // Muted steel blue — calmer for print
+  const accent: [number, number, number] = [71, 112, 148];
   const dark: [number, number, number] = [23, 23, 23];
   const muted: [number, number, number] = [115, 115, 115];
   const line: [number, number, number] = [212, 212, 212];
@@ -68,7 +69,7 @@ export function downloadReportPdf(input: ReportPdfInput) {
   };
 
   // Header bar
-  doc.setFillColor(...pink);
+  doc.setFillColor(...accent);
   doc.rect(0, 0, pageWidth, 8, "F");
 
   doc.setTextColor(...dark);
@@ -106,7 +107,7 @@ export function downloadReportPdf(input: ReportPdfInput) {
   summaryY += 14;
 
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(...pink);
+  doc.setTextColor(...accent);
   doc.text(
     `Total: ${formatElapsedClock(input.totalMs)} (${formatDurationShort(input.totalMs)})`,
     summaryX,
@@ -151,7 +152,7 @@ export function downloadReportPdf(input: ReportPdfInput) {
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.setTextColor(...pink);
+    doc.setTextColor(...accent);
     doc.text(formatElapsedClock(client.ms), pageWidth - marginX, y, {
       align: "right",
     });
@@ -180,7 +181,7 @@ export function downloadReportPdf(input: ReportPdfInput) {
         doc.setFontSize(10);
         doc.setTextColor(...dark);
         doc.text(operation.name, marginX + 8, y);
-        doc.setTextColor(...pink);
+        doc.setTextColor(...accent);
         doc.text(formatElapsedClock(operation.ms), pageWidth - marginX, y, {
           align: "right",
         });
@@ -214,10 +215,10 @@ export function downloadReportPdf(input: ReportPdfInput) {
           columnStyles: {
             0: { cellWidth: 180 },
             1: { cellWidth: 200 },
-            2: { cellWidth: 70, halign: "right", textColor: pink },
+            2: { cellWidth: 70, halign: "right", textColor: accent },
           },
           didDrawPage: () => {
-            doc.setFillColor(...pink);
+            doc.setFillColor(...accent);
             doc.rect(0, 0, pageWidth, 8, "F");
           },
         });

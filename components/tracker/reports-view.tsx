@@ -213,41 +213,49 @@ export function ReportsView({ clients }: ReportsViewProps) {
     const seen = new Set<string>();
     const names: string[] = [];
     for (const log of clientScopedLogs) {
-      if (seen.has(log.description)) continue;
-      seen.add(log.description);
+      const key = log.description.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
       names.push(log.description);
     }
-    return names.sort((a, b) => a.localeCompare(b));
+    return names.sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" }),
+    );
   }, [clientScopedLogs]);
 
   const operationNameOptions = useMemo(() => {
     const seen = new Set<string>();
     const names: string[] = [];
     for (const log of clientScopedLogs) {
-      if (seen.has(log.operationName)) continue;
-      seen.add(log.operationName);
+      const key = log.operationName.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
       names.push(log.operationName);
     }
-    return names.sort((a, b) => a.localeCompare(b));
+    return names.sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" }),
+    );
   }, [clientScopedLogs]);
 
   const filteredLogs = useMemo(() => {
     const startMs = range.start.getTime();
     const endMs = range.end.getTime();
+    const entryKeys =
+      selectedEntryNames.size > 0
+        ? new Set([...selectedEntryNames].map((n) => n.toLowerCase()))
+        : null;
+    const operationKeys =
+      selectedOperationNames.size > 0
+        ? new Set([...selectedOperationNames].map((n) => n.toLowerCase()))
+        : null;
 
     return clientScopedLogs.filter((log) => {
       const t = new Date(log.start_time).getTime();
       if (t < startMs || t > endMs) return false;
-      if (
-        selectedEntryNames.size > 0 &&
-        !selectedEntryNames.has(log.description)
-      ) {
+      if (entryKeys && !entryKeys.has(log.description.toLowerCase())) {
         return false;
       }
-      if (
-        selectedOperationNames.size > 0 &&
-        !selectedOperationNames.has(log.operationName)
-      ) {
+      if (operationKeys && !operationKeys.has(log.operationName.toLowerCase())) {
         return false;
       }
       return true;
