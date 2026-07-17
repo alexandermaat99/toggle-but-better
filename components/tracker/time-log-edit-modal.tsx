@@ -1,22 +1,28 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import {
-  formatDurationShort,
-  workedMs,
-} from "@/lib/format-time";
+import { formatDurationShort, workedMs } from "@/lib/format-time";
 import type { TimeLog } from "@/lib/types";
 import { NameSuggestionField } from "./name-suggestion-field";
 
+export type TimeLogDraft = {
+  description: string | null;
+  start_time: string;
+  end_time: string;
+};
+
 type TimeLogEditModalProps = {
+  open: boolean;
+  mode: "edit" | "create";
   log: TimeLog | null;
   suggestions: string[];
   onSave: (update: {
     id: number;
-    description: string;
+    description: string | null;
     start_time: string;
     end_time: string;
   }) => void;
+  onCreate: (draft: TimeLogDraft) => void;
   onDelete: (id: number) => void;
   onClose: () => void;
 };
@@ -31,10 +37,22 @@ function fromLocalInputValue(local: string) {
   return new Date(local).toISOString();
 }
 
+function defaultCreateRange() {
+  const end = new Date();
+  const start = new Date(end.getTime() - 30 * 60_000);
+  return {
+    startLocal: toLocalInputValue(start.toISOString()),
+    endLocal: toLocalInputValue(end.toISOString()),
+  };
+}
+
 export function TimeLogEditModal({
+  open,
+  mode,
   log,
   suggestions,
   onSave,
+  onCreate,
   onDelete,
   onClose,
 }: TimeLogEditModalProps) {
@@ -47,31 +65,42 @@ export function TimeLogEditModal({
   const [listOpen, setListOpen] = useState(false);
 
   useEffect(() => {
-    if (!log?.end_time) return;
-    setDescription(log.description?.trim() || "");
-    setStartLocal(toLocalInputValue(log.start_time));
-    setEndLocal(toLocalInputValue(log.end_time));
+    if (!open) return;
+
+    if (mode === "edit" && log?.end_time) {
+      setDescription(log.description?.trim() || "");
+      setStartLocal(toLocalInputValue(log.start_time));
+      setEndLocal(toLocalInputValue(log.end_time));
+    } else {
+      const defaults = defaultCreateRange();
+      setDescription("");
+      setStartLocal(defaults.startLocal);
+      setEndLocal(defaults.endLocal);
+    }
     setError(null);
     setListOpen(false);
-  }, [log]);
+  }, [open, mode, log]);
 
   useEffect(() => {
-    if (!log) return;
+    if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [log, onClose]);
+  }, [open, onClose]);
 
-  if (!log?.end_time) return null;
+  if (!open) return null;
+  if (mode === "edit" && !log?.end_time) return null;
+
+  const pauseMs = mode === "edit" ? (log?.pause_ms ?? 0) : 0;
 
   const previewMs = (() => {
     try {
       return workedMs(
         fromLocalInputValue(startLocal),
         fromLocalInputValue(endLocal),
-        log.pause_ms ?? 0,
+        pauseMs,
       );
     } catch {
       return 0;
@@ -79,12 +108,6 @@ export function TimeLogEditModal({
   })();
 
   function submit() {
-    const trimmed = description.trim();
-    if (!trimmed) {
-      setError("A name is required.");
-      inputRef.current?.focus();
-      return;
-    }
     if (!startLocal || !endLocal) {
       setError("Start and end times are required.");
       return;
@@ -100,6 +123,17 @@ export function TimeLogEditModal({
     }
     if (new Date(endIso).getTime() < new Date(startIso).getTime()) {
       setError("End time must be after start time.");
+      return;
+    }
+
+    const trimmed = description.trim() || null;
+
+    if (mode === "create") {
+      onCreate({
+        description: trimmed,
+        start_time: startIso,
+        end_time: endIso,
+      });
       return;
     }
 
@@ -127,7 +161,7 @@ export function TimeLogEditModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-lg font-bold text-neutral-900">
-          Edit time entry
+          {mode === "create" ? "Add time entry" : "Edit time entry"}
         </h2>
         <p className="mt-1 text-sm text-neutral-500">
           Duration:{" "}
@@ -139,7 +173,7 @@ export function TimeLogEditModal({
         <div className="mt-5 space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-neutral-700">
-              Name
+              Name <span className="font-normal text-neutral-400">(optional)</span>
             </label>
             <NameSuggestionField
               value={description}
@@ -150,7 +184,6 @@ export function TimeLogEditModal({
               suggestions={suggestions}
               listOpen={listOpen}
               onListOpenChange={setListOpen}
-              error={Boolean(error && !description.trim())}
               inputRef={inputRef}
               onSubmit={submit}
               onCancel={onClose}
@@ -196,13 +229,17 @@ export function TimeLogEditModal({
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
 
         <div className="mt-6 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => onDelete(log.id)}
-            className="rounded-full px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-          >
-            Delete
-          </button>
+          {mode === "edit" && log ? (
+            <button
+              type="button"
+              onClick={() => onDelete(log.id)}
+              className="rounded-full px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+            >
+              Delete
+            </button>
+          ) : (
+            <span />
+          )}
           <div className="flex gap-3">
             <button
               type="button"
@@ -216,7 +253,7 @@ export function TimeLogEditModal({
               onClick={submit}
               className="rounded-full bg-[#e812a4] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#d01093]"
             >
-              Save
+              {mode === "create" ? "Add entry" : "Save"}
             </button>
           </div>
         </div>

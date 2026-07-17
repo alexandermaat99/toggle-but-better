@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { formatElapsedClock, formatStartedDate, sumLogMs } from "@/lib/format-time";
 import type { ProjectWithOperations, TimeLog } from "@/lib/types";
 import { OperationItem } from "./operation-item";
@@ -15,10 +16,12 @@ type ProjectBlockProps = {
   onResume: () => void;
   onStop: () => void;
   onEditLog: (log: TimeLog) => void;
+  onAddLog: (operationId: number) => void;
   onDeleteLog: (id: number) => void;
   onAddOperation: (projectId: number) => void;
   onRenameOperation: (operationId: number, name: string) => void;
   onDeleteOperation: (operationId: number) => void;
+  onDeleteProject: (projectId: number) => void;
 };
 
 export function ProjectBlock({
@@ -32,16 +35,18 @@ export function ProjectBlock({
   onResume,
   onStop,
   onEditLog,
+  onAddLog,
   onDeleteLog,
   onAddOperation,
   onRenameOperation,
   onDeleteOperation,
+  onDeleteProject,
 }: ProjectBlockProps) {
   const allLogs = project.operations.flatMap((op) => op.time_log);
   const closedProjectMs = sumLogMs(allLogs);
 
   return (
-    <section className="space-y-3">
+    <section className="group/project space-y-3">
       <header className="space-y-0.5">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <h2 className="text-2xl font-bold tracking-tight text-neutral-900">
@@ -50,6 +55,14 @@ export function ProjectBlock({
           <span className="text-2xl font-bold tracking-tight text-neutral-900">
             {formatElapsedClock(closedProjectMs)}
           </span>
+          <button
+            type="button"
+            onClick={() => onDeleteProject(project.id)}
+            className="translate-y-0.5 text-neutral-300 opacity-0 transition-all hover:text-neutral-500 group-hover/project:opacity-100"
+            aria-label="Delete project"
+          >
+            <Trash2 className="size-4" strokeWidth={1.75} />
+          </button>
         </div>
         <p className="text-sm text-neutral-400">
           started {formatStartedDate(project.created_at)}
@@ -83,6 +96,7 @@ export function ProjectBlock({
               onResume={onResume}
               onStop={onStop}
               onEditLog={onEditLog}
+              onAddLog={onAddLog}
               onDeleteLog={onDeleteLog}
               onRename={onRenameOperation}
               onDelete={onDeleteOperation}

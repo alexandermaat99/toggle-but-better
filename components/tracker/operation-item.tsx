@@ -1,6 +1,6 @@
 "use client";
 
-import { Circle, Pause, Play, Trash2 } from "lucide-react";
+import { Circle, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { formatElapsedClock, sumLogMs, workedMs } from "@/lib/format-time";
 import type { OperationWithLogs, TimeLog } from "@/lib/types";
@@ -17,6 +17,7 @@ type OperationItemProps = {
   onResume: () => void;
   onStop: () => void;
   onEditLog: (log: TimeLog) => void;
+  onAddLog: (operationId: number) => void;
   onDeleteLog: (id: number) => void;
   onRename: (operationId: number, name: string) => void;
   onDelete: (operationId: number) => void;
@@ -33,6 +34,7 @@ export function OperationItem({
   onResume,
   onStop,
   onEditLog,
+  onAddLog,
   onDeleteLog,
   onRename,
   onDelete,
@@ -124,14 +126,24 @@ export function OperationItem({
         )}
 
         {!editing ? (
-          <button
-            type="button"
-            onClick={() => onDelete(operation.id)}
-            className="shrink-0 text-neutral-300 opacity-0 transition-all hover:text-neutral-500 group-hover/operation:opacity-100"
-            aria-label="Delete operation"
-          >
-            <Trash2 className="size-4" strokeWidth={1.75} />
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => onAddLog(operation.id)}
+              className="shrink-0 text-neutral-300 opacity-0 transition-all hover:text-neutral-500 group-hover/operation:opacity-100"
+              aria-label="Add time entry"
+            >
+              <Plus className="size-4" strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(operation.id)}
+              className="shrink-0 text-neutral-300 opacity-0 transition-all hover:text-neutral-500 group-hover/operation:opacity-100"
+              aria-label="Delete operation"
+            >
+              <Trash2 className="size-4" strokeWidth={1.75} />
+            </button>
+          </>
         ) : null}
 
         {isThisActive ? (

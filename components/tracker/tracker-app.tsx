@@ -198,6 +198,9 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
   } | null>(null);
   const confirmModalResolver = useRef<((value: boolean) => void) | null>(null);
   const [editingLog, setEditingLog] = useState<TimeLog | null>(null);
+  const [creatingLogForOperationId, setCreatingLogForOperationId] = useState<
+    number | null
+  >(null);
 
   function resetPauseState() {
     setIsPaused(false);
@@ -305,11 +308,27 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
   }
 
   async function handleAddClient() {
-    const name = window.prompt("Client name?");
-    if (!name?.trim()) return;
+    const seen = new Set<string>();
+    const suggestions: string[] = [];
+    for (const client of clients) {
+      const name = client.client_name?.trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      suggestions.push(name);
+    }
+
+    const name = await requestEntryName(suggestions, {
+      title: "Add client",
+      description: "Name this client.",
+      confirmLabel: "Add client",
+      placeholder: "e.g. Purple Pumpkin",
+    });
+    if (!name) return;
 
     const { error: insertError } = await supabase.from("clients").insert({
-      client_name: name.trim(),
+      client_name: name,
       user_id: userId,
     });
 
@@ -325,11 +344,39 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
       setError("Add a client first.");
       return;
     }
-    const name = window.prompt("Project name?");
-    if (!name?.trim()) return;
+
+    const seen = new Set<string>();
+    const suggestions: string[] = [];
+    const pushName = (name: string | null | undefined) => {
+      const trimmed = name?.trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      suggestions.push(trimmed);
+    };
+
+    const selected = clients.find((c) => c.id === selectedClientId);
+    for (const project of selected?.projects ?? []) {
+      pushName(project.project_name);
+    }
+    for (const client of clients) {
+      if (client.id === selectedClientId) continue;
+      for (const project of client.projects ?? []) {
+        pushName(project.project_name);
+      }
+    }
+
+    const name = await requestEntryName(suggestions, {
+      title: "Add project",
+      description: "Name this project.",
+      confirmLabel: "Add project",
+      placeholder: "e.g. Coding this Shiz",
+    });
+    if (!name) return;
 
     const { error: insertError } = await supabase.from("projects").insert({
-      project_name: name.trim(),
+      project_name: name,
       client_id: selectedClientId,
     });
 
@@ -403,6 +450,64 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
     }
 
     if (activeLog?.operation_id === operationId) {
+      setActiveLog(null);
+      resetPauseState();
+      await load();
+      return;
+    }
+
+    await load({ preservePause: true });
+  }
+
+  async function handleDeleteProject(projectId: number) {
+    const confirmed = await requestConfirm(
+      "Delete project?",
+      "This will also delete all operations and time entries under it. This can’t be undone.",
+    );
+    if (!confirmed) return;
+
+    const project = clients
+      .flatMap((c) => c.projects)
+      .find((p) => p.id === projectId);
+    const operationIds = (project?.operations ?? []).map((op) => op.id);
+
+    if (operationIds.length > 0) {
+      const { error: logsError } = await supabase
+        .from("time_log")
+        .delete()
+        .in("operation_id", operationIds);
+
+      if (logsError) {
+        setError(logsError.message);
+        return;
+      }
+
+      const { error: opsError } = await supabase
+        .from("operations")
+        .delete()
+        .eq("project_id", projectId);
+
+      if (opsError) {
+        setError(opsError.message);
+        return;
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", projectId);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+
+    const activeUnderProject =
+      activeLog?.operation_id != null &&
+      operationIds.includes(activeLog.operation_id);
+
+    if (activeUnderProject) {
       setActiveLog(null);
       resetPauseState();
       await load();
@@ -535,7 +640,7 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
 
   async function handleSaveLog(update: {
     id: number;
-    description: string;
+    description: string | null;
     start_time: string;
     end_time: string;
   }) {
@@ -554,6 +659,30 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
     }
 
     setEditingLog(null);
+    await load({ preservePause: true });
+  }
+
+  async function handleCreateLog(draft: {
+    description: string | null;
+    start_time: string;
+    end_time: string;
+  }) {
+    if (creatingLogForOperationId == null) return;
+
+    const { error: insertError } = await supabase.from("time_log").insert({
+      operation_id: creatingLogForOperationId,
+      description: draft.description,
+      start_time: draft.start_time,
+      end_time: draft.end_time,
+      pause_ms: 0,
+    });
+
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+
+    setCreatingLogForOperationId(null);
     await load({ preservePause: true });
   }
 
@@ -628,11 +757,19 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
                     onPause={handlePause}
                     onResume={handleResume}
                     onStop={handleStop}
-                    onEditLog={setEditingLog}
+                    onEditLog={(log) => {
+                      setCreatingLogForOperationId(null);
+                      setEditingLog(log);
+                    }}
+                    onAddLog={(operationId) => {
+                      setEditingLog(null);
+                      setCreatingLogForOperationId(operationId);
+                    }}
                     onDeleteLog={handleDeleteLog}
                     onAddOperation={handleAddOperation}
                     onRenameOperation={handleRenameOperation}
                     onDeleteOperation={handleDeleteOperation}
+                    onDeleteProject={handleDeleteProject}
                   />
                 ))
               )}
@@ -671,14 +808,20 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
       />
 
       <TimeLogEditModal
+        open={editingLog != null || creatingLogForOperationId != null}
+        mode={creatingLogForOperationId != null ? "create" : "edit"}
         log={editingLog}
         suggestions={collectPastEntryNames(
           clients,
-          editingLog?.operation_id,
+          creatingLogForOperationId ?? editingLog?.operation_id,
         )}
         onSave={handleSaveLog}
+        onCreate={handleCreateLog}
         onDelete={handleDeleteLog}
-        onClose={() => setEditingLog(null)}
+        onClose={() => {
+          setEditingLog(null);
+          setCreatingLogForOperationId(null);
+        }}
       />
     </div>
   );
