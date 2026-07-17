@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, UserRound } from "lucide-react";
 import type { Client } from "@/lib/types";
 
 export type NavView = "dash" | "report" | "client";
 
 type ClientNavProps = {
-  firstName: string;
+  displayName: string;
   email?: string;
   clients: Client[];
   view: NavView;
@@ -16,6 +16,7 @@ type ClientNavProps = {
   onSelectReport: () => void;
   onSelectClient: (id: number) => void;
   onAddClient: () => void;
+  onEditDisplayName: () => void;
   onLogout: () => void;
 };
 
@@ -28,7 +29,7 @@ function navItemClass(active: boolean) {
 }
 
 export function ClientNav({
-  firstName,
+  displayName,
   email,
   clients,
   view,
@@ -37,6 +38,7 @@ export function ClientNav({
   onSelectReport,
   onSelectClient,
   onAddClient,
+  onEditDisplayName,
   onLogout,
 }: ClientNavProps) {
   const [profileOpen, setProfileOpen] = useState(false);
@@ -73,7 +75,7 @@ export function ClientNav({
           >
             <span className="min-w-0">
               <span className="block truncate text-base font-medium">
-                {firstName}
+                {displayName}
               </span>
               {email ? (
                 <span className="mt-0.5 block truncate text-xs text-white/40">
@@ -93,6 +95,18 @@ export function ClientNav({
               role="menu"
               className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#1f1f1f] py-1 shadow-xl"
             >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setProfileOpen(false);
+                  onEditDisplayName();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-white/80 transition hover:bg-white/5 hover:text-white"
+              >
+                <UserRound className="size-3.5" />
+                Edit display name
+              </button>
               <button
                 type="button"
                 role="menuitem"

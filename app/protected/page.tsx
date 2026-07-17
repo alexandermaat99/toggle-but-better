@@ -19,7 +19,18 @@ async function TrackerLoader() {
     redirect("/auth/login");
   }
 
-  return <TrackerApp userId={userId} email={email} />;
+  const { data: userData } = await supabase.auth.getUser();
+  const meta = userData.user?.user_metadata as
+    | { display_name?: string; full_name?: string }
+    | undefined;
+  const displayName =
+    (typeof meta?.display_name === "string" && meta.display_name.trim()) ||
+    (typeof meta?.full_name === "string" && meta.full_name.trim()) ||
+    null;
+
+  return (
+    <TrackerApp userId={userId} email={email} initialDisplayName={displayName} />
+  );
 }
 
 export default function ProtectedPage() {

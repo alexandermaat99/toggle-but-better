@@ -1,21 +1,5 @@
 import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import {
-  formatDurationShort,
-  formatElapsedClock,
-  formatLogRange,
-} from "@/lib/format-time";
-
-export type ReportPdfLog = {
-  id: number;
-  description: string;
-  operationName: string;
-  projectName: string;
-  clientName: string;
-  start_time: string;
-  end_time: string;
-  ms: number;
-};
+import { formatDurationShort, formatElapsedClock } from "@/lib/format-time";
 
 export type ReportPdfGroup = {
   id: number;
@@ -27,13 +11,12 @@ export type ReportPdfGroup = {
     operations: {
       name: string;
       ms: number;
-      logs: ReportPdfLog[];
     }[];
   }[];
 };
 
 type ReportPdfInput = {
-  title?: string;
+  displayName: string;
   clientLabel: string;
   rangeLabel: string;
   rangeDates: string;
@@ -54,7 +37,6 @@ export function downloadReportPdf(input: ReportPdfInput) {
   const marginX = 48;
   let y = 52;
 
-  // Muted steel blue — calmer for print
   const accent: [number, number, number] = [71, 112, 148];
   const dark: [number, number, number] = [23, 23, 23];
   const muted: [number, number, number] = [115, 115, 115];
@@ -64,47 +46,42 @@ export function downloadReportPdf(input: ReportPdfInput) {
     const pageHeight = doc.internal.pageSize.getHeight();
     if (y + needed > pageHeight - 48) {
       doc.addPage();
+      doc.setFillColor(...accent);
+      doc.rect(0, 0, pageWidth, 8, "F");
       y = 52;
     }
   };
 
-  // Header bar
   doc.setFillColor(...accent);
   doc.rect(0, 0, pageWidth, 8, "F");
 
+  const reportTitle = `${input.displayName} Time Log for ${input.clientLabel}`;
+
   doc.setTextColor(...dark);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text(input.title ?? "Time Report", marginX, y);
-  y += 22;
+  doc.setFontSize(18);
+  const titleLines = doc.splitTextToSize(reportTitle, pageWidth - marginX * 2);
+  doc.text(titleLines, marginX, y);
+  y += titleLines.length * 22 + 6;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(...muted);
   doc.text(`Generated ${new Date().toLocaleString()}`, marginX, y);
-  y += 28;
+  y += 24;
 
-  // Summary card
-  ensureSpace(90);
+  ensureSpace(72);
   doc.setDrawColor(...line);
   doc.setFillColor(250, 250, 250);
-  doc.roundedRect(marginX, y, pageWidth - marginX * 2, 78, 8, 8, "FD");
+  doc.roundedRect(marginX, y, pageWidth - marginX * 2, 64, 8, 8, "FD");
 
   const summaryX = marginX + 16;
   let summaryY = y + 22;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(...dark);
-  doc.text("Summary", summaryX, summaryY);
-  summaryY += 18;
-
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(...muted);
-  doc.text(`Client: ${input.clientLabel}`, summaryX, summaryY);
-  summaryY += 14;
   doc.text(`Span: ${input.rangeLabel} · ${input.rangeDates}`, summaryX, summaryY);
-  summaryY += 14;
+  summaryY += 16;
 
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...accent);
@@ -113,7 +90,7 @@ export function downloadReportPdf(input: ReportPdfInput) {
     summaryX,
     summaryY,
   );
-  y += 98;
+  y += 84;
 
   if (input.entryFilters.length > 0 || input.operationFilters.length > 0) {
     ensureSpace(40);
@@ -144,98 +121,58 @@ export function downloadReportPdf(input: ReportPdfInput) {
   }
 
   for (const client of input.groups) {
-    ensureSpace(36);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(...dark);
-    doc.text(client.name, marginX, y);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(...accent);
-    doc.text(formatElapsedClock(client.ms), pageWidth - marginX, y, {
-      align: "right",
-    });
-    y += 10;
-
-    doc.setDrawColor(...line);
-    doc.setLineWidth(0.8);
-    doc.line(marginX, y, pageWidth - marginX, y);
-    y += 18;
+    if (input.groups.length > 1) {
+      ensureSpace(36);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(...dark);
+      doc.text(client.name, marginX, y);
+      doc.setTextColor(...accent);
+      doc.text(formatElapsedClock(client.ms), pageWidth - marginX, y, {
+        align: "right",
+      });
+      y += 10;
+      doc.setDrawColor(...line);
+      doc.setLineWidth(0.8);
+      doc.line(marginX, y, pageWidth - marginX, y);
+      y += 18;
+    }
 
     for (const project of client.projects) {
       ensureSpace(28);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
+      doc.setFontSize(12);
       doc.setTextColor(...dark);
       doc.text(project.name, marginX, y);
       doc.setTextColor(...muted);
       doc.text(formatElapsedClock(project.ms), pageWidth - marginX, y, {
         align: "right",
       });
-      y += 14;
+      y += 16;
 
       for (const operation of project.operations) {
-        ensureSpace(24);
-        doc.setFont("helvetica", "bold");
+        ensureSpace(16);
+        doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(...dark);
-        doc.text(operation.name, marginX + 8, y);
+        const opName = doc.splitTextToSize(
+          operation.name,
+          pageWidth - marginX * 2 - 100,
+        );
+        doc.text(opName, marginX + 14, y);
         doc.setTextColor(...accent);
         doc.text(formatElapsedClock(operation.ms), pageWidth - marginX, y, {
           align: "right",
         });
-        y += 8;
-
-        const body = operation.logs.map((log) => [
-          log.description || "—",
-          formatLogRange(log.start_time, log.end_time),
-          formatDurationShort(log.ms),
-        ]);
-
-        autoTable(doc, {
-          startY: y,
-          margin: { left: marginX + 8, right: marginX },
-          head: [["Entry", "When", "Duration"]],
-          body,
-          theme: "plain",
-          styles: {
-            font: "helvetica",
-            fontSize: 9,
-            textColor: dark,
-            cellPadding: { top: 4, bottom: 4, left: 4, right: 4 },
-            overflow: "linebreak",
-          },
-          headStyles: {
-            fillColor: [245, 245, 245],
-            textColor: muted,
-            fontStyle: "bold",
-            fontSize: 8,
-          },
-          columnStyles: {
-            0: { cellWidth: 180 },
-            1: { cellWidth: 200 },
-            2: { cellWidth: 70, halign: "right", textColor: accent },
-          },
-          didDrawPage: () => {
-            doc.setFillColor(...accent);
-            doc.rect(0, 0, pageWidth, 8, "F");
-          },
-        });
-
-        const docWithTable = doc as jsPDF & {
-          lastAutoTable?: { finalY: number };
-        };
-        y = (docWithTable.lastAutoTable?.finalY ?? y) + 16;
+        y += Math.max(opName.length, 1) * 13 + 4;
       }
 
-      y += 6;
+      y += 12;
     }
 
-    y += 10;
+    y += 6;
   }
 
-  // Footer page numbers
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -250,6 +187,7 @@ export function downloadReportPdf(input: ReportPdfInput) {
     );
   }
 
+  const safeName = input.displayName.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   const safeClient = input.clientLabel.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-  doc.save(`time-report-${safeClient}-${filenameDate()}.pdf`);
+  doc.save(`time-log-${safeName}-${safeClient}-${filenameDate()}.pdf`);
 }

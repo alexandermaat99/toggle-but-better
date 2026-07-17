@@ -20,6 +20,7 @@ import { TimeLogEditModal } from "./time-log-edit-modal";
 type TrackerAppProps = {
   userId: string;
   email: string | undefined;
+  initialDisplayName: string | null;
 };
 
 const clientSelect = `
@@ -169,9 +170,16 @@ function collectPastEntryNames(
   return names;
 }
 
-export function TrackerApp({ userId, email }: TrackerAppProps) {
+export function TrackerApp({
+  userId,
+  email,
+  initialDisplayName,
+}: TrackerAppProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const [displayName, setDisplayName] = useState(
+    () => initialDisplayName?.trim() || firstNameFromEmail(email),
+  );
   const [clients, setClients] = useState<ClientWithProjects[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [view, setView] = useState<NavView>("dash");
@@ -305,6 +313,27 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/auth/login");
+  }
+
+  async function handleEditDisplayName() {
+    const name = await requestEntryName([], {
+      title: "Display name",
+      description: "Shown on reports and in the sidebar.",
+      confirmLabel: "Save name",
+      placeholder: "e.g. Abigail Measles",
+    });
+    if (!name) return;
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { display_name: name },
+    });
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setDisplayName(name);
   }
 
   async function handleAddClient() {
@@ -689,7 +718,7 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
   return (
     <div className="h-dvh overflow-hidden bg-[#f7f7f7] text-neutral-900">
       <ClientNav
-        firstName={firstNameFromEmail(email)}
+        displayName={displayName}
         email={email}
         clients={clients}
         view={view}
@@ -701,6 +730,7 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
           setView("client");
         }}
         onAddClient={handleAddClient}
+        onEditDisplayName={handleEditDisplayName}
         onLogout={handleLogout}
       />
 
@@ -716,14 +746,14 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
         ) : view === "dash" ? (
           <DashView
             clients={clients}
-            firstName={firstNameFromEmail(email)}
+            firstName={displayName}
             onOpenClient={(id) => {
               setSelectedClientId(id);
               setView("client");
             }}
           />
         ) : view === "report" ? (
-          <ReportsView clients={clients} />
+          <ReportsView clients={clients} displayName={displayName} />
         ) : !selectedClient ? (
           <div className="flex flex-1 flex-col items-start justify-center">
             <p className="text-lg text-neutral-500">

@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 type ReportsViewProps = {
   clients: ClientWithProjects[];
+  displayName: string;
 };
 
 type SpanMode = "week" | "month" | "custom";
@@ -164,7 +165,7 @@ function MultiFilter({
   );
 }
 
-export function ReportsView({ clients }: ReportsViewProps) {
+export function ReportsView({ clients, displayName }: ReportsViewProps) {
   const [selectedClientId, setSelectedClientId] = useState<number | "all">(
     "all",
   );
@@ -360,6 +361,7 @@ export function ReportsView({ clients }: ReportsViewProps) {
 
   function handleDownloadPdf() {
     downloadReportPdf({
+      displayName,
       clientLabel,
       rangeLabel,
       rangeDates,
