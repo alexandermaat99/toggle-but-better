@@ -80,7 +80,7 @@ function collectFlatLogs(clients: ClientWithProjects[]): FlatLog[] {
           if (!log.end_time) continue;
           logs.push({
             id: log.id,
-            description: log.description?.trim() || "Untitled",
+            description: log.description?.trim() || "",
             operationName: operation.operation_name || "Untitled operation",
             projectName: project.project_name,
             clientId: client.id,
@@ -213,6 +213,7 @@ export function ReportsView({ clients }: ReportsViewProps) {
     const seen = new Set<string>();
     const names: string[] = [];
     for (const log of clientScopedLogs) {
+      if (!log.description) continue;
       const key = log.description.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
@@ -576,8 +577,9 @@ export function ReportsView({ clients }: ReportsViewProps) {
                             className="flex items-center justify-between gap-3 text-sm text-neutral-500"
                           >
                             <span className="min-w-0 truncate">
-                              {log.description} —{" "}
-                              {formatLogRange(log.start_time, log.end_time)}
+                              {log.description
+                                ? `${log.description} — ${formatLogRange(log.start_time, log.end_time)}`
+                                : formatLogRange(log.start_time, log.end_time)}
                             </span>
                             <span className="shrink-0 tabular-nums text-[#e812a4]">
                               {formatDurationShort(log.ms)}

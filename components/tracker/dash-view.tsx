@@ -37,7 +37,7 @@ function collectEntries(clients: ClientWithProjects[]): FlatEntry[] {
           if (!log.end_time) continue;
           entries.push({
             id: log.id,
-            description: log.description?.trim() || "Untitled",
+            description: log.description?.trim() || "",
             clientName: client.client_name,
             clientId: client.id,
             projectName: project.project_name,
@@ -153,9 +153,11 @@ export function DashView({ clients, firstName, onOpenClient }: DashViewProps) {
                   className="flex items-start justify-between gap-3 text-sm"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-neutral-900">
-                      {entry.description}
-                    </p>
+                    {entry.description ? (
+                      <p className="truncate font-medium text-neutral-900">
+                        {entry.description}
+                      </p>
+                    ) : null}
                     <p className="truncate text-neutral-400">
                       {entry.clientName} · {entry.projectName} ·{" "}
                       {entry.operationName}

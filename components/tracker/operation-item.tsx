@@ -17,6 +17,7 @@ type OperationItemProps = {
   onResume: () => void;
   onStop: () => void;
   onEditLog: (log: TimeLog) => void;
+  onDeleteLog: (id: number) => void;
   onRename: (operationId: number, name: string) => void;
   onDelete: (operationId: number) => void;
 };
@@ -32,6 +33,7 @@ export function OperationItem({
   onResume,
   onStop,
   onEditLog,
+  onDeleteLog,
   onRename,
   onDelete,
 }: OperationItemProps) {
@@ -189,7 +191,12 @@ export function OperationItem({
 
       <div className="pl-0.5">
         {closedLogs.map((log) => (
-          <TimeLogged key={log.id} log={log} onOpen={onEditLog} />
+          <TimeLogged
+            key={log.id}
+            log={log}
+            onOpen={onEditLog}
+            onDelete={onDeleteLog}
+          />
         ))}
       </div>
     </div>

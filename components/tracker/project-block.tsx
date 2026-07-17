@@ -15,6 +15,7 @@ type ProjectBlockProps = {
   onResume: () => void;
   onStop: () => void;
   onEditLog: (log: TimeLog) => void;
+  onDeleteLog: (id: number) => void;
   onAddOperation: (projectId: number) => void;
   onRenameOperation: (operationId: number, name: string) => void;
   onDeleteOperation: (operationId: number) => void;
@@ -31,6 +32,7 @@ export function ProjectBlock({
   onResume,
   onStop,
   onEditLog,
+  onDeleteLog,
   onAddOperation,
   onRenameOperation,
   onDeleteOperation,
@@ -81,6 +83,7 @@ export function ProjectBlock({
               onResume={onResume}
               onStop={onStop}
               onEditLog={onEditLog}
+              onDeleteLog={onDeleteLog}
               onRename={onRenameOperation}
               onDelete={onDeleteOperation}
             />

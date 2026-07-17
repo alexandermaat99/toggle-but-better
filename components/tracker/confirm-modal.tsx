@@ -43,7 +43,7 @@ export function ConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();

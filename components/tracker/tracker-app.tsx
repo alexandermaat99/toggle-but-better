@@ -417,41 +417,17 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
 
     const now = Date.now();
     const finalPauseMs = totalPausedMs(now);
-    const wasPaused = isPaused;
-
-    // Freeze the clock while naming (cancel restores prior pause state)
-    if (!wasPaused) {
-      setIsPaused(true);
-      setPauseStartedAt(now);
-    }
-
-    const description = await requestEntryName(
-      collectPastEntryNames(clients, activeLog.operation_id),
-    );
-
-    if (description === null) {
-      if (!wasPaused) {
-        setIsPaused(false);
-        setPauseStartedAt(null);
-      }
-      return false;
-    }
 
     const { error: updateError } = await supabase
       .from("time_log")
       .update({
         end_time: new Date(now).toISOString(),
         pause_ms: finalPauseMs,
-        description,
       })
       .eq("id", activeLog.id);
 
     if (updateError) {
       setError(updateError.message);
-      if (!wasPaused) {
-        setIsPaused(false);
-        setPauseStartedAt(null);
-      }
       return false;
     }
     setActiveLog(null);
@@ -528,6 +504,9 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
   }
 
   async function handleDeleteLog(id: number) {
+    // Close edit modal first so the confirm dialog is visible
+    setEditingLog(null);
+
     const confirmed = await requestConfirm(
       "Delete time entry?",
       "This can’t be undone.",
@@ -543,8 +522,6 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
       setError(deleteError.message);
       return;
     }
-
-    if (editingLog?.id === id) setEditingLog(null);
 
     if (activeLog?.id === id) {
       setActiveLog(null);
@@ -652,6 +629,7 @@ export function TrackerApp({ userId, email }: TrackerAppProps) {
                     onResume={handleResume}
                     onStop={handleStop}
                     onEditLog={setEditingLog}
+                    onDeleteLog={handleDeleteLog}
                     onAddOperation={handleAddOperation}
                     onRenameOperation={handleRenameOperation}
                     onDeleteOperation={handleDeleteOperation}

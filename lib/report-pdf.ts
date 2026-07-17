@@ -188,7 +188,7 @@ export function downloadReportPdf(input: ReportPdfInput) {
         y += 8;
 
         const body = operation.logs.map((log) => [
-          log.description,
+          log.description || "—",
           formatLogRange(log.start_time, log.end_time),
           formatDurationShort(log.ms),
         ]);
